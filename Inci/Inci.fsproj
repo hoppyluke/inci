@@ -6,6 +6,7 @@
   <ItemGroup>
     <Compile Include="Core\Types.fs" />
     <Compile Include="Core\Events.fs" />
+    <Compile Include="Core\IncidentManagement.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 </Project>

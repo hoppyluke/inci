@@ -10,38 +10,12 @@ type EventTime =
         new(timestamp, isPrecise) = { Timestamp = timestamp; IsPrecise = isPrecise }
     end
 
-type Observation =
-    { Id: string
-      Time: EventTime
-      Description: string }
-
-type Action =
-    { Id: string
-      Time: EventTime
-      Description: string }
-
-type Alert =
-    { Id: string
-      Time: EventTime
-      Description: string
-      IsFired: bool }
-
-type Monitor =
-    { Id: string
-      Time: EventTime
-      Description: string
-      IsDown: bool }
-
-type Declaration =
-    { Time: EventTime
-      IsResolved: bool }
-
 type Event =
-    | Observation
-    | Action
-    | Monitor
-    | Alert
-    | Resolution
+    | Observation of id: string * time : EventTime * description : string
+    | Action of id: string * time : EventTime * description : string
+    | Monitor of id: string * time : EventTime * description : string * isDown : bool
+    | Alert of id: string * time : EventTime * description : string * isFired: bool
+    | Declaration of time : EventTime * isResolved : bool
 
 type Incident =
     { Id: Guid

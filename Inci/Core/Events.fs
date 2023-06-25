@@ -9,6 +9,12 @@ let at time =
 let about time =
     EventTime(time, false)
 
+let now () =
+    EventTime(DateTimeOffset.UtcNow, true)
+
+let nowish () =
+    EventTime(DateTimeOffset.UtcNow, false)
+
 let private timeOnlyPattern = new Regex("^(\d{1,2}:\d{2}(?::\d{2}(?:.\d{1,3})?)?)(\??)$")
 
 let private adjustDate timestamp =
