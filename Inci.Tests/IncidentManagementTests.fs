@@ -7,21 +7,13 @@ open Inci.Core.IncidentManagement
 [<Fact>]
 let ``declare creates active incident`` () =
     let i = declare "Stuff broke" (Events.now())
-    let isDeclaration e =
-        match e with
-        | Declaration(_, isResolved) -> not isResolved
-        | _ -> false
-    Assert.Contains(i.Events, isDeclaration)
+    Assert.Contains(i.Events, fun e -> e.Type = Declaration && not e.IsResolved)
 
 [<Fact>]
-let ``resolve creates active incident`` () =
+let ``resolve creates resolution event`` () =
     let resolutionTime = Events.now()
     let i = resolve resolutionTime (declare "Stuff broke" (Events.now()))
-    let isResolution e =
-        match e with
-        | Declaration(_, isResolved) -> isResolved
-        | _ -> false
-    Assert.Contains(i.Events, isResolution)
+    Assert.Contains(i.Events, fun e -> e.Type = Declaration && e.IsResolved)
 
 [<Fact>]
 let ``rename changes name only`` () =
@@ -38,7 +30,7 @@ let ``observed adds observation`` () =
     let i2 = observed (Events.now()) o i
     let isObservation e =
         match e with 
-        | Observation(_, _, obs) when obs = o -> true
+        | e when e.Type = Observation && e.Description = o -> true
         | _ -> false
     Assert.Contains(i2.Events, isObservation)
     
@@ -47,10 +39,17 @@ let ``observed adds observation`` () =
 let ``observed sets id`` () =
     let i = declare "Stuff broke" (Events.now())
     let i2 = observed (Events.now()) "It's not good" i
-    let o =
-        i2.Events
-        |> List.find (function | Observation(_) -> true | _ -> false)
-    let hasId = match o with
-                | Observation(id, time, desc) -> not (System.String.IsNullOrWhiteSpace(id))
-                | _ -> false
-    Assert.True(hasId)
+    let o = List.find (fun e -> e.Type = Observation) i2.Events
+    Assert.NotNull(o.Id)
+
+[<Fact>]
+let ``add event sets sequential ID`` () =
+    let i = declare "Stuff broke" (Events.now())
+            |> observed (Events.now()) "Obs 1"
+            |> observed (Events.now()) "Obs 2"
+            |> observed (Events.now()) "Obs 3"
+    let e = List.head i.Events
+    Assert.Equal(4, List.length(i.Events))
+    Assert.Equal("o2", e.Id)
+    Assert.Equal("Obs 3", e.Description)
+    

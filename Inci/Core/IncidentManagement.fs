@@ -8,14 +8,46 @@ let private addEvent e i =
 let declare name start =
     { Id = Guid.NewGuid()
       Name = name 
-      Events = [Declaration(start, false)] }
+      Events = [{ Id = "d0"
+                  Type = Declaration
+                  Time = start
+                  Description = "Incident declared"
+                  IsResolved = false
+               }]
+      }
 
 let resolve time i =
-    addEvent (Declaration(time, true)) i
+    addEvent { Id = "d1"; Type = Declaration; Time = time; Description = "Incident resolved"; IsResolved = true} i
 
 let rename name i =
     { i with Name = name }
 
+// let private nextId filter prefix i =
+//     let filteredEvents = List.filter filter i.Events
+//     match filteredEvents with
+//     | [] -> $"{prefix}1"
+//     | _ -> List.map (fun e -> e.)
+
+let private idPrefix t =
+    match t with
+    | Declaration -> "d"
+    | Observation -> "o"
+    | Alert -> "a"
+    | Monitor -> "m"
+    | Action -> "k"
+
+let private idAfter prefix (e: Event) =
+    let n = int (e.Id.Replace(prefix, "")) + 1
+    $"{prefix}%d{n}"
+
+let private nextId t i =
+    let prefix = idPrefix t
+    let events = List.filter (fun e -> e.Type = t) i.Events
+    match events with
+    | [] -> prefix + "0"
+    | [_] -> prefix + "1"
+    | _ -> List.sortByDescending (fun e -> e.Time.Timestamp) events |> List.head |> idAfter prefix
+
 let observed time s i =
-    let id = "o1"
-    addEvent (Observation(id, time, s)) i
+    let id = nextId Observation i
+    addEvent { Id = id; Type = Observation; Time = time; Description = s; IsResolved = false} i
