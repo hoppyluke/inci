@@ -22,12 +22,6 @@ let resolve time i =
 let rename name i =
     { i with Name = name }
 
-// let private nextId filter prefix i =
-//     let filteredEvents = List.filter filter i.Events
-//     match filteredEvents with
-//     | [] -> $"{prefix}1"
-//     | _ -> List.map (fun e -> e.)
-
 let private idPrefix t =
     match t with
     | Declaration -> "d"
@@ -37,8 +31,8 @@ let private idPrefix t =
     | Action -> "k"
 
 let private idAfter prefix (e: Event) =
-    let n = int (e.Id.Replace(prefix, "")) + 1
-    $"{prefix}%d{n}"
+    let n = int (e.Id.Replace(prefix, ""))
+    $"{prefix}%d{n + 1}"
 
 let private nextId t i =
     let prefix = idPrefix t
