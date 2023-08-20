@@ -8,7 +8,8 @@
   <ItemGroup>
     <Compile Include="EventsTests.fs" />
     <Compile Include="IncidentManagementTests.fs" />
-    <Compile Include="Tests.fs" />
+    <Compile Include="CommandsTests.fs" />
+    <Compile Include="ClientUtilsTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
