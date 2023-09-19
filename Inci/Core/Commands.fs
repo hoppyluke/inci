@@ -14,11 +14,20 @@ let private ensureTime time =
   | Some t -> t
   | None -> nowish()
 
+let switch provider id =
+  provider.Switch id
+
+let list provider =
+  provider.Index()
+
 let declare provider name start =
   IncidentManagement.declare name (ensureTime start)
   |> provider.Put
   |> fun i -> i.Id
   |> provider.Switch
 
-let switch provider id =
-  provider.Switch id
+let resolve provider resolutionTime =
+  let i = provider.Current()
+  match i with
+  | Some incident -> Some (IncidentManagement.resolve (ensureTime resolutionTime) incident)
+  | None -> None
