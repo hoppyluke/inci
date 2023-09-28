@@ -1,9 +1,10 @@
-module Inci.Core.CommandsTests
+module Inci.Client.CommandsTests
 
 open System
 open Xunit
-open Inci.Core.Commands
-open Inci.Core.Events
+open Inci.Core
+open Inci.Client.Commands
+open Inci.Client.IO
 
 type InMemoryCollection =
     { mutable Selected: Guid option
@@ -27,53 +28,49 @@ type InMemoryCollection =
                     Some i
         | None -> None
     
+      member this.ToProvider() =
+        { Current = this.Current; Put = this.Put}
+
       static member Create() =
         { Selected = None; Incidents = Map.empty }
 
-let inMemoryProvider (collection : InMemoryCollection) =
-    { Current = collection.Current; Switch = collection.Switch; Index = collection.Index; Put = collection.Put }
+let private assertError r =
+  match r with
+  | Success m -> Assert.Fail("Expected error result but got success: " + m)
+  | _ -> ()
+
+let private assertSuccess r =
+  match r with
+  | Error e -> Assert.Fail("Expected success result but got error: " + e)
+  | _ -> ()
 
 [<Fact>]
-let ```switch to invalid ID is none`` () =
-    let p = inMemoryProvider (InMemoryCollection.Create())
-    let result = switch p (Guid.NewGuid())
-    Assert.False(result.IsSome)
+let ``declare errors with no args`` () =
+  let result = declareCommand (InMemoryCollection.Create().ToProvider()) Array.empty
+  assertError result
 
 [<Fact>]
-let ``declare creates new incident`` () =
-  let p = inMemoryProvider (InMemoryCollection.Create())
-  let name = "Test"
-  let result = declare p name (Some(now()))
-  Assert.True(result.IsSome)
-  Assert.Equal(name, result.Value.Name)
+let ``declare succeeds without time`` () =
+  let args = [| "test name" |]
+  let result = declareCommand (InMemoryCollection.Create().ToProvider()) args
+  assertSuccess result
+
+[<Fact>]
+let ``declare errors with invalid time`` () =
+  let args = [| "test name"; "foo" |]
+  let result = declareCommand (InMemoryCollection.Create().ToProvider()) args
+  assertError result
+
+[<Fact>]
+let ``declare succeeds with valid time`` () =
+  let args = [| "test name"; "12:34" |]
+  let result = declareCommand (InMemoryCollection.Create().ToProvider()) args
+  assertSuccess result
 
 [<Fact>]
 let ``declare sets current incident`` () =
-  let p = inMemoryProvider (InMemoryCollection.Create())
-  let result = declare p "Test" (Some(now()))
-  Assert.True(result.IsSome)
-  Assert.Equal(result, p.Current())
-
-[<Fact>]
-let ``declare defaults time to nowish`` () =
-  let p = inMemoryProvider (InMemoryCollection.Create())
-  let result = declare p "Test" None
-  Assert.True(result.IsSome)
-  let declaration = List.find (fun e -> e.Type = Declaration) result.Value.Events
-  Assert.False(declaration.Time.IsPrecise)
-
-[<Fact>]
-let ``resolve without incident returns none`` () =
-  let p = inMemoryProvider (InMemoryCollection.Create())
-  let result = resolve p (Some(now()))
-  Assert.True(result.IsNone)
-
-[<Fact>]
-let ``resolve adds resolution`` () =
-  let p = inMemoryProvider (InMemoryCollection.Create())
-  let i = (IncidentManagement.declare "Test" (now())) |> p.Put
-  p.Switch i.Id |> ignore
-  let result = resolve p (Some(now()))
-  Assert.True(result.IsSome)
-  let resolution = List.find (fun e -> e.Type = Declaration && e.IsResolved = true) result.Value.Events
-  Assert.True(resolution.Time.IsPrecise)
+  let args = [| "test name" |]
+  let collection = InMemoryCollection.Create()
+  let result = declareCommand (collection.ToProvider()) args
+  assertSuccess result
+  Assert.True(collection.Current().IsSome)
