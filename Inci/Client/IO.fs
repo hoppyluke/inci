@@ -7,7 +7,8 @@ open System.Text.Json
 
 type Provider =
     { Current: unit -> Incident option
-      //#Switch: Guid -> Incident option
+      Switch: Guid -> Incident option
+      Select: Incident -> Incident
       //Index: unit -> Incident seq
       Put: Incident -> Incident }
 
@@ -45,4 +46,14 @@ let current () =
         | _ -> None
     else None
 
-let fileProvider = { Current = current; Put = put }
+let select (incident : Incident) =
+    File.WriteAllText(currentIncidentFile, incident.Id.ToString("n"))
+    incident
+
+let switch id =
+    let i = read id
+    match i with
+    | None -> None
+    | Some incident -> Some(select incident) 
+
+let fileProvider = { Current = current; Put = put; Switch = switch; Select = select }

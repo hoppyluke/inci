@@ -27,9 +27,13 @@ type InMemoryCollection =
         | Some i -> this.Selected <- Some id
                     Some i
         | None -> None
+
+      member this.Select(incident) =
+        this.Selected <- Some incident.Id
+        incident
     
       member this.ToProvider() =
-        { Current = this.Current; Put = this.Put}
+        { Current = this.Current; Put = this.Put; Switch = this.Switch; Select = this.Select}
 
       static member Create() =
         { Selected = None; Incidents = Map.empty }
