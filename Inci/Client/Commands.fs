@@ -13,11 +13,11 @@ let private succeedWith s =
   Success(s)
 
 let private failWith s =
-  Failure(s)
+  Error(s)
 
 exception ValidationError of string
 
-let require name v =
+let private require name v =
   match v with
   | Some x -> x
   | None -> raise (ValidationError($"{name} is invalid"))
