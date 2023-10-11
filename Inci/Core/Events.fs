@@ -47,3 +47,11 @@ let parse t =
     | ApproxDateAndTime d -> Some d
     | DateAndTime d -> Some d
     | _ -> None
+
+let formatTime (t : EventTime) =
+    let output = match t.Timestamp with
+                 | x when x.Hour = 0 && x.Minute = 0 && x.Second = 0 && x.Millisecond = 0 -> x.ToString("yyyy-MM-dd")
+                 | x -> x.ToString("yyyy-MM-dd HH:mm:ssK")
+    match t.IsPrecise with
+    | true -> output
+    | false -> output + "?"

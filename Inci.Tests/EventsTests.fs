@@ -189,3 +189,27 @@ let ``parse handles approx. date and time in the future`` () =
     Assert.Equal(targetTime.Hour, result.Timestamp.Hour)
     Assert.Equal(targetTime.Minute, result.Timestamp.Minute)
     Assert.Equal(targetTime.Second, result.Timestamp.Second)
+
+[<Fact>]
+let ``formatTime handles exact time`` () =
+    let target = DateTimeOffset.Now
+    let result = formatTime (at target)
+    Assert.Equal(target.ToString("yyyy-MM-dd HH:mm:ssK"), result)
+
+[<Fact>]
+let ``formatTime handles date only`` () =
+    let target = DateTimeOffset.Parse("2023-01-01")
+    let result = formatTime (at target)
+    Assert.Equal("2023-01-01", result)
+
+[<Fact>]
+let ``formatTime handles approx time`` () =
+    let target = DateTimeOffset.Now
+    let result = formatTime (about target)
+    Assert.Equal(target.ToString("yyyy-MM-dd HH:mm:ssK?"), result)
+
+[<Fact>]
+let ``formatTime handles approx date only`` () =
+    let target = DateTimeOffset.Parse("2023-01-01")
+    let result = formatTime (about target)
+    Assert.Equal("2023-01-01?", result)
