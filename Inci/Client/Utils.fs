@@ -7,6 +7,7 @@ let private abbreviations = Map [
     ("act", "action")
     ("dec", "declare")
     ("res", "resolve")
+    ("?", "which")
 ]
 
 let private expand command =

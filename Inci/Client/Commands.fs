@@ -9,11 +9,10 @@ type Result =
   | Success of string
   | Error of string
 
-let private succeedWith s =
-  Success(s)
-
-let private failWith s =
-  Error(s)
+let maybeResult isError msg =
+  match isError with
+  | true -> Error msg
+  | false -> Success msg
 
 exception ValidationError of string
 
@@ -35,13 +34,18 @@ let private incidentDetails i =
   $"{i.Id:n}: {i.Name}"
 
 let declareCommand provider (args : string[]) =
-  if args.Length < 1 then Error("usage: inci declare name [time]")
+  if args.Length < 1 then Error("usage: inci declare <name> [time]")
   else
     try
       declare args[0] (ensureTime (argValue 1 args))
       |> provider.Put
       |> provider.Select
       |> incidentDetails
-      |> succeedWith
+      |> Success
     with
       | ValidationError(m) -> Error m
+
+let whichCommand provider noneIsError =
+  match provider.Current() with
+  | None -> maybeResult noneIsError "No current incident"
+  | Some i -> Success (incidentDetails i)

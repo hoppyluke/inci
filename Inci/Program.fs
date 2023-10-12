@@ -1,22 +1,30 @@
 ﻿open Inci.Client.Commands
 open Inci.Client.Utils
 open Inci.Client.IO
+open System
 
 let version = "0.0.1"
 
-let private usageMessage = "usage: inci command [args]"
+let private usageMessage = "usage: inci <command> [args]"
 
 let private dispatch (args : string[]) =
     let command = canonicalName args[0]
     match command with
     | "version" -> Success(version)
     | "declare" -> declareCommand fileProvider args[1..]
+    | "which" -> whichCommand fileProvider false
     | _ -> Error(usageMessage)
+
+let private lf = Environment.NewLine
 
 [<EntryPoint>]
 let main args =
     if args.Length = 0 then
         printfn "%s" usageMessage
+        let whichResult = whichCommand fileProvider true
+        match whichResult with
+        | Success s -> printfn "%sCurrent incident:%s%s%s" lf lf lf s
+        | Error _ -> ()
         0
     else
         let result = dispatch args
