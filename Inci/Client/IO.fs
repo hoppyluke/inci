@@ -55,11 +55,8 @@ let private ensureDirectory path =
  
 let put (inci : Incident) =
     ensureDirectory docs
-    ensureDirectory data
     use file = File.Create(fileName inci)
     JsonSerializer.Serialize(file, inci, jsonOptions)
-    use current = File.CreateText(currentIncidentFile)
-    current.Write(inci.Id.ToString("n"))
     inci
 
 let private read id =
@@ -78,6 +75,7 @@ let current () =
     else None
 
 let select (incident : Incident) =
+    ensureDirectory data
     File.WriteAllText(currentIncidentFile, incident.Id.ToString("n"))
     incident
 
