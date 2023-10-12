@@ -56,13 +56,11 @@ let whichCommand provider noneIsError =
   | Some i -> Success (incidentDetails i)
 
 let resolveCommand provider (args : string[]) =
-  if args.Length < 1 then Error "usage: inci resolve <time>"
-  else
-    try
-      let time = ensureTime (argValue 0 args)
-      resolve time (ensureIncident provider)
-      |> provider.Put
-      |> fun i -> sprintf "%s resolved at %s" i.Name (formatTime time)
-      |> Success 
-    with
-    | ValidationError m -> Error m
+  try
+    let time = ensureTime (argValue 0 args)
+    resolve time (ensureIncident provider)
+    |> provider.Put
+    |> fun i -> sprintf "%s resolved at %s" i.Name (formatTime time)
+    |> Success 
+  with
+  | ValidationError m -> Error m
