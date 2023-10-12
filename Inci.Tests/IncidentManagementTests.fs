@@ -1,5 +1,6 @@
 module Inci.Core.IncidentManagementTests
 
+open System
 open Xunit
 
 open Inci.Core.IncidentManagement
@@ -14,6 +15,17 @@ let ``resolve creates resolution event`` () =
     let resolutionTime = Events.now()
     let i = resolve resolutionTime (declare "Stuff broke" (Events.now()))
     Assert.Contains(i.Events, fun e -> e.Type = Declaration && e.IsResolved)
+
+[<Fact>]
+let ``resolve again changes time`` () =
+    let t0 = Events.at(DateTimeOffset.UtcNow.AddMinutes(-5))
+    let t1 = Events.about(DateTimeOffset.UtcNow)
+    let i = declare "Stuff broke" (Events.now())
+            |> resolve t0
+            |> resolve t1
+    let resolutions = List.filter (fun e -> e.Type = Declaration && e.IsResolved) i.Events
+    let resolution = Assert.Single(resolutions)
+    Assert.Equal(t1, resolution.Time)
 
 [<Fact>]
 let ``rename changes name only`` () =
@@ -62,7 +74,7 @@ let ``acted adds action`` () =
     let a = "Turned it off and on again"
     let i = declare "Stuff broke" (Events.now())
             |> acted t a
-    let action = List.find (fun e -> e.Type = Action) i.Events
+    let action = List.find (fun e -> e.Type = EventType.Action) i.Events
     Assert.Equal(t, action.Time)
     Assert.Equal(a, action.Description)
     Assert.False(action.IsResolved)

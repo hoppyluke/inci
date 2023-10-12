@@ -13,6 +13,7 @@ let private dispatch (args : string[]) =
     | "version" -> Success(version)
     | "declare" -> declareCommand fileProvider args[1..]
     | "which" -> whichCommand fileProvider false
+    | "resolve" -> resolveCommand fileProvider args[1..]
     | _ -> Error(usageMessage)
 
 let private lf = Environment.NewLine

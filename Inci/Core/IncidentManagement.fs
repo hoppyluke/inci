@@ -35,7 +35,12 @@ let private addResolution eventType id t i =
     | (Some _, Some _) -> Some i
     | (Some event, None) -> Some { i with Events = resolutionOf t event :: i.Events }
     | (None, _) -> None
-                        
+
+let private eventPredicate eventType isResolved e =
+    e.Type = eventType && e.IsResolved = isResolved
+
+let private transform predicate transform events =
+    List.map (fun e -> if predicate e then transform e else e) events
 
 let declare name start =
     { Id = System.Guid.NewGuid()
@@ -49,7 +54,10 @@ let declare name start =
       }
 
 let resolve time i =
-    addEvent Declaration time "Incident resolved" true i
+    let isResolution = eventPredicate Declaration true
+    if List.exists isResolution i.Events then
+        { i with Events = transform isResolution (fun r -> { r with Time = time }) i.Events }
+    else addEvent Declaration time "Incident resolved" true i
 
 let rename name i =
     { i with Name = name }
