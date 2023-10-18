@@ -158,3 +158,36 @@ let ``up handles invalid type id`` () =
     let alert = List.find (fun e -> e.Type = Alert) i.Events
     let i2 = up (Events.now()) alert.Id i
     Assert.True(i2.IsNone)
+
+[<Fact>]
+let ``list filters events`` () =
+    let i = declare "Stuff broke" (Events.now())
+            |> observed (Events.now()) "Observation 1"
+            |> acted (Events.now()) "Action"
+            |> observed (Events.now()) "Observation 2"
+    let observations = list Observation i
+    Assert.Equal(2, observations.Length)
+    let actions = list EventType.Action i
+    Assert.Equal(1, actions.Length)
+
+[<Fact>]
+let ``list sorts events`` () =
+    let i = declare "Stuff broke" (Events.now())
+            |> observed (Events.at(DateTimeOffset.UtcNow.AddMinutes(-5))) "First"
+            |> observed (Events.now()) "Last"
+    let observations = list Observation i
+    Assert.Equal("First", observations.Head.Description)
+    Assert.Equal("Last", observations.Tail.Head.Description)
+
+[<Fact>]
+let ``list sorts events by time only`` () =
+    let checkOrder i =
+        let events = list Monitor i
+        Assert.False(events.Head.IsResolved)
+        Assert.True(events.Tail.Head.IsResolved)
+    let i = declare "Stuff broke" (Events.now())
+            |> down (Events.at(DateTimeOffset.UtcNow.AddMinutes(-5))) "Monitor"
+            |> up (Events.now()) "m0"
+    match i with
+    | Some incident -> checkOrder incident
+    | None -> Assert.Fail("No monitor found")

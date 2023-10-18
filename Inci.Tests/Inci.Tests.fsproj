@@ -6,6 +6,7 @@
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="EventTimeTests.fs" />
     <Compile Include="EventsTests.fs" />
     <Compile Include="IncidentManagementTests.fs" />
     <Compile Include="CommandsTests.fs" />

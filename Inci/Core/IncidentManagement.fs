@@ -79,3 +79,8 @@ let down time s i =
 
 let up time id i =
     addResolution Monitor id time i
+
+let list eventType i =
+    i.Events
+    |> List.filter (fun e -> e.Type = eventType)
+    |> List.sort

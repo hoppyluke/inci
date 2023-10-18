@@ -16,9 +16,11 @@ let private expand command =
     | Some a -> a
     | None -> command
 
+let canonicalise (name : string) =
+    name.Trim().ToLowerInvariant()
+
 let canonicalName (name : string) =
-  name.Trim().ToLowerInvariant()
-  |> expand
+  expand (canonicalise name)
 
 let private commands = Map [
     ("declare", [])
@@ -27,9 +29,8 @@ let private commands = Map [
     ("switch", [])
     ("list", [])
     ("timeline", [])
-    ("alert", ["fired"; "resolved"])
-    ("monitor", ["down"; "up"])
-    ("observation", ["add"])
-    ("action", ["add"])
+    ("alert", ["fired"; "resolved"; "list"])
+    ("monitor", ["down"; "up"; "list"])
+    ("observation", ["add"; "list"])
+    ("action", ["add"; "list"])
 ]
-

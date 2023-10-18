@@ -8,8 +8,8 @@
     <Compile Include="Core\Events.fs" />
     <Compile Include="Core\IncidentManagement.fs" />
     <Compile Include="Client\IO.fs" />
-    <Compile Include="Client\Commands.fs" />
     <Compile Include="Client\Utils.fs" />
+    <Compile Include="Client\Commands.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 </Project>

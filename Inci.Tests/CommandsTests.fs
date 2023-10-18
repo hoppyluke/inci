@@ -62,8 +62,7 @@ let ``declare succeeds without time`` () =
 [<Fact>]
 let ``declare errors with invalid time`` () =
   let args = [| "test name"; "foo" |]
-  let result = declareCommand (InMemoryCollection.Create().ToProvider()) args
-  assertError result
+  Assert.Throws<ValidationError>(fun () -> ignore(declareCommand (InMemoryCollection.Create().ToProvider()) args))
 
 [<Fact>]
 let ``declare succeeds with valid time`` () =
