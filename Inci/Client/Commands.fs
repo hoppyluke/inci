@@ -39,8 +39,13 @@ let private ensureIncident provider =
   | Some i -> i
   | None -> raise (ValidationError "No current incident")
 
-let private incidentDetails i =
-  $"{i.Id:n}: {i.Name}"
+let private updateIncident provider action =
+  ensureIncident provider
+  |> action
+  |> provider.Put
+
+let private incidentResult incident =
+  Success $"{incident.Id:n}: {incident.Name}"
 
 let declareCommand provider (args : string[]) =
   if args.Length < 1 then Error("usage: inci declare <name> [time]")
@@ -48,23 +53,25 @@ let declareCommand provider (args : string[]) =
     declare args[0] (ensureTime (argValue 1 args))
     |> provider.Put
     |> provider.Select
-    |> incidentDetails
-    |> Success
+    |> incidentResult
 
 let whichCommand provider noneIsError =
   match provider.Current() with
   | None -> maybeResult noneIsError "No current incident"
-  | Some i -> Success (incidentDetails i)
+  | Some i -> incidentResult i
 
 let resolveCommand provider (args : string[]) =
   let time = ensureTime (argValue 0 args)
-  resolve time (ensureIncident provider)
-  |> provider.Put
-  |> fun i -> sprintf "%s resolved at %s" i.Name (formatTime time)
-  |> Success 
+  updateIncident provider (resolve time)
+  |> fun i -> Success (sprintf "%s resolved at %s" i.Name (formatTime time))
 
 let private eventDetails (event : Inci.Core.Event) =
-  sprintf "%s: %s" event.Id event.Description
+  sprintf "%s: %s at %s" event.Id event.Description (formatTime event.Time)
+
+let private lastEvent incident =
+  incident.Events.Head
+
+let private eventResult = lastEvent >> eventDetails >> Success
 
 let private listObservationsCommand provider (args : string[]) =
   ensureIncident provider
@@ -73,14 +80,22 @@ let private listObservationsCommand provider (args : string[]) =
   |> String.concat System.Environment.NewLine
   |> Success
 
+let private observedCommand provider (args : string[]) =
+  if args.Length < 1 then Error("usage: inci observation add <description> [time]")
+  else
+    let description = args[0]
+    let time = ensureTime (argValue 1 args)
+    updateIncident provider (observed time description)
+    |> eventResult
+
 let observationCommands = ("observation", Map [
   ("list", listObservationsCommand)
+  ("add", observedCommand)
 ])
 
 let handler (group : CommandGroup) provider (args : string[]) =
   let (name, commandMap) = group
   if args.Length < 1 then raise (ValidationError($"usage: inci {name} <action> [args]"))
   match Map.tryFind (canonicalise(args[0])) commandMap with
-  | Some cmd -> cmd provider args
+  | Some cmd -> cmd provider args[1..]
   | None -> raise (ValidationError($"unknown command: {name} {args[0]}"))
-

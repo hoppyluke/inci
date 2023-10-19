@@ -5,7 +5,6 @@ open System
 
 let version = "0.0.1"
 
-
 let private dispatch (args : string[]) =
     let command = canonicalName args[0]
     match command with
