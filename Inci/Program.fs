@@ -13,7 +13,7 @@ let private dispatch (args : string[]) =
     | "declare" -> declareCommand fileProvider args[1..]
     | "which" -> whichCommand fileProvider false
     | "resolve" -> resolveCommand fileProvider args[1..]
-    | "observation" -> observationHandler fileProvider args[1..]
+    | "observation" -> handler observationCommands fileProvider args[1..]
     | _ -> Error($"{command} is not an inci command")
 
 let private lf = Environment.NewLine

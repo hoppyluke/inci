@@ -10,6 +10,9 @@ type Result =
   | Success of string
   | Error of string
 
+type Command = Provider -> string[] -> Result
+type CommandGroup = string * Map<string, Command>
+
 let maybeResult isError msg =
   match isError with
   | true -> Error msg
@@ -63,15 +66,21 @@ let resolveCommand provider (args : string[]) =
 let private eventDetails (event : Inci.Core.Event) =
   sprintf "%s: %s" event.Id event.Description
 
-let private observationListCommand provider =
+let private listObservationsCommand provider (args : string[]) =
   ensureIncident provider
   |> list Observation
   |> List.map eventDetails
   |> String.concat System.Environment.NewLine
+  |> Success
 
-let observationHandler provider (args : string[]) =
-  if args.Length < 1 then raise (ValidationError("usage: inci observation <action> [args]"))
-  match canonicalise args[0] with
-  | "list" -> Success (observationListCommand provider)
-  | "add" -> Success "add"
-  | _ -> Error "usage: inci observation <action> [args]"
+let observationCommands = ("observation", Map [
+  ("list", listObservationsCommand)
+])
+
+let handler (group : CommandGroup) provider (args : string[]) =
+  let (name, commandMap) = group
+  if args.Length < 1 then raise (ValidationError($"usage: inci {name} <action> [args]"))
+  match Map.tryFind (canonicalise(args[0])) commandMap with
+  | Some cmd -> cmd provider args
+  | None -> raise (ValidationError($"unknown command: {name} {args[0]}"))
+
