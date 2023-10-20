@@ -8,17 +8,15 @@ let private idPrefix t =
     | Monitor -> "m"
     | Action -> "k"
 
-let private idAfter prefix (e: Event) =
-    let n = int (e.Id.Replace(prefix, ""))
-    $"{prefix}%d{n + 1}"
+let private idToInt prefix (e : Event) =
+    int (e.Id.Replace(prefix, ""))
 
 let private nextId t i =
     let prefix = idPrefix t
     let events = List.filter (fun e -> e.Type = t) i.Events
     match events with
     | [] -> prefix + "0"
-    | [_] -> prefix + "1"
-    | _ -> List.sortByDescending (fun e -> e.Time.Timestamp) events |> List.head |> idAfter prefix
+    | _ -> events |> List.map (idToInt prefix) |> List.max |> fun n -> $"{prefix}%d{n + 1}"
 
 let private addEvent y t s r i =
     let id = nextId y i

@@ -67,7 +67,51 @@ let ``add event sets sequential ID`` () =
     Assert.Equal("o1", o1.Id)
     let o2 = List.find (fun e -> e.Description = "Obs 3") i.Events
     Assert.Equal("o2", o2.Id)
-    
+
+[<Fact>]
+let ``add event handles out of order timestamps for IDs`` () =
+    let i = declare "Stuff broke" (Events.now())
+            |> observed (Events.at(DateTimeOffset.UtcNow)) "Obs 1"
+            |> observed (Events.at(DateTimeOffset.UtcNow.AddMinutes(-10))) "Obs 2"
+            |> observed (Events.at(DateTimeOffset.UtcNow.AddMinutes(-5))) "Obs 3"
+    let hasId id (event : Event) =
+        Assert.Equal(id, event.Id)
+    let observations = List.filter (fun e -> e.Type = Observation) i.Events
+    Assert.Collection(observations, (hasId "o2"), (hasId "o1"), (hasId "o0"))
+
+[<Fact>]
+let ``add event handles missing IDs for new ones`` () =
+    let i = {
+        Id = Guid.NewGuid();
+        Name = "Test";
+        Events = [
+            {
+                Id = "o1";
+                Time = Events.now();
+                Type = Observation;
+                IsResolved = false;
+                Description = "Obs 4"
+            }
+            {
+                Id = "o3";
+                Time = Events.now();
+                Type = Observation;
+                IsResolved = false;
+                Description = "Obs 2"
+            }
+            {
+                Id = "o0";
+                Time = Events.now();
+                Type = Observation;
+                IsResolved = false;
+                Description = "Obs 1"
+            }
+        ]
+    }
+    let i2 = observed (Events.now()) "Obs 5" i
+    let newObs = List.find (fun e -> e.Type = Observation && e.Description = "Obs 5") i2.Events
+    Assert.Equal("o4", newObs.Id)
+
 [<Fact>]
 let ``acted adds action`` () =
     let t = Events.now()
