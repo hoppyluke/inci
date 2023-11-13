@@ -49,6 +49,11 @@ let private assertSuccess r =
   | Error e -> Assert.Fail("Expected success result but got error: " + e)
   | _ -> ()
 
+let private expect value =
+  match value with
+  | Some x -> x
+  | None -> failwith "Value expected"
+
 let private setupIncident (collection : InMemoryCollection) =
   declare "Test incident" (Events.nowish())
   |> collection.Put
@@ -107,14 +112,44 @@ let ``which returns current incident details`` () =
 let ``resolve without incident raises error`` () =
   let collection = InMemoryCollection.Create()
   Assert.Throws<ValidationError>(fun () -> ignore(resolveCommand (collection.ToProvider()) [| "12:34" |])) 
-  
+
+let private isResolution e =
+  e.Type = EventType.Declaration && e.IsResolved
+
 [<Fact>]
 let ``resolve succeeds with incident`` () =
   let collection = InMemoryCollection.Create()
-  let incident = setupIncident collection
+  ignore (setupIncident collection)
   let result = resolveCommand (collection.ToProvider()) [| |]
   assertSuccess result
-  let updated = collection.Current()
-  match updated with
-  | Some i -> Assert.Contains(i.Events, fun e -> e.IsResolved && e.Type = EventType.Declaration)
-  | None -> Assert.Fail("No incident")
+  let incident = expect (collection.Current())
+  Assert.Contains(incident.Events, isResolution)
+
+let private assertHasTime eventSelector startTime incident =
+  let foundEvent = List.find eventSelector incident.Events
+  Assert.False(foundEvent.Time.IsPrecise)
+  Assert.True(foundEvent.Time.Timestamp > startTime)
+
+[<Fact>]
+let ``resolve defaults time`` () =
+  let start = DateTimeOffset.Now
+  let collection = InMemoryCollection.Create()
+  ignore (setupIncident collection)
+  let result = resolveCommand (collection.ToProvider()) [| |]
+  assertSuccess result
+  let incident = expect (collection.Current())
+  assertHasTime isResolution start incident
+
+[<Fact>]
+let ``resolve sets time`` () =
+  let start = DateTimeOffset.Now
+  let collection = InMemoryCollection.Create()
+  ignore (setupIncident collection)
+  let result = resolveCommand (collection.ToProvider()) [| "2030-02-03T08:00" |]
+  assertSuccess result
+  let incident = expect (collection.Current())
+  let resolution = List.find isResolution incident.Events
+  Assert.True(resolution.Time.IsPrecise)
+  Assert.Equal(2030, resolution.Time.Timestamp.Year)
+  Assert.Equal(2, resolution.Time.Timestamp.Month)
+  Assert.Equal(3, resolution.Time.Timestamp.Day)
