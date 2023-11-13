@@ -49,6 +49,11 @@ let private assertSuccess r =
   | Error e -> Assert.Fail("Expected success result but got error: " + e)
   | _ -> ()
 
+let private setupIncident (collection : InMemoryCollection) =
+  declare "Test incident" (Events.nowish())
+  |> collection.Put
+  |> collection.Select
+
 [<Fact>]
 let ``declare errors with no args`` () =
   let result = declareCommand (InMemoryCollection.Create().ToProvider()) Array.empty
@@ -94,9 +99,7 @@ let ``which without incident respects error option`` (shouldFail : bool) =
 [<Fact>]
 let ``which returns current incident details`` () =
   let collection = InMemoryCollection.Create()
-  let incident = declare "Test" (Events.nowish())
-                 |> collection.Put
-                 |> collection.Select
+  let incident = setupIncident collection
   let result = whichCommand (collection.ToProvider()) true
   assertSuccess result
 
@@ -108,9 +111,7 @@ let ``resolve without incident raises error`` () =
 [<Fact>]
 let ``resolve succeeds with incident`` () =
   let collection = InMemoryCollection.Create()
-  let incident = declare "Test" (Events.nowish())
-                 |> collection.Put
-                 |> collection.Select
+  let incident = setupIncident collection
   let result = resolveCommand (collection.ToProvider()) [| |]
   assertSuccess result
   let updated = collection.Current()
