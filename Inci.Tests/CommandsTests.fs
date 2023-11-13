@@ -49,6 +49,11 @@ let private assertSuccess r =
   | Error e -> Assert.Fail("Expected success result but got error: " + e)
   | _ -> ()
 
+let private assertSuccessMessage messageAssertions r =
+  match r with
+  | Error e -> Assert.Fail("Expected success result but got error: " + e)
+  | Success m -> messageAssertions m
+
 let private expect value =
   match value with
   | Some x -> x
@@ -204,3 +209,21 @@ let ``observation add sets specified time`` () =
     Assert.Equal(2, observation.Time.Timestamp.Month)
     Assert.Equal(3, observation.Time.Timestamp.Day)
   assertOnCurrentIncident provider result assertions
+
+[<Fact>]
+let ``observation list requires incidnet`` () =
+  let _, provider = setupWithoutIncident()
+  Assert.Throws<ValidationError>(fun () -> ignore(handler observationCommands provider [| "list" |]))
+
+[<Fact>]
+let ``observation list combines results`` () =
+  let _, provider = setupWithIncident()
+  observed (Events.now()) "First" (expect (provider.Current()))
+  |> observed (Events.now()) "Second"
+  |> provider.Put
+  |> ignore
+  let result = handler observationCommands provider [| "list" |]
+  let hasResults msg =
+    Assert.Contains("First", msg)
+    Assert.Contains("Second", msg)
+  assertSuccessMessage hasResults result
