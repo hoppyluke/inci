@@ -142,7 +142,6 @@ let ``resolve defaults time`` () =
 
 [<Fact>]
 let ``resolve sets time`` () =
-  let start = DateTimeOffset.Now
   let collection = InMemoryCollection.Create()
   ignore (setupIncident collection)
   let result = resolveCommand (collection.ToProvider()) [| "2030-02-03T08:00" |]
@@ -153,3 +152,59 @@ let ``resolve sets time`` () =
   Assert.Equal(2030, resolution.Time.Timestamp.Year)
   Assert.Equal(2, resolution.Time.Timestamp.Month)
   Assert.Equal(3, resolution.Time.Timestamp.Day)
+
+[<Fact>]
+let ``invalid observation command raises error`` () =
+  let collection = InMemoryCollection.Create()
+  Assert.Throws<ValidationError>(fun () -> ignore (handler observationCommands (collection.ToProvider()) [| "foo" |]))
+
+[<Fact>]
+let ``observation add requires incident`` () =
+  let collection = InMemoryCollection.Create()
+  Assert.Throws<ValidationError>(fun () -> ignore (handler observationCommands (collection.ToProvider()) [| "add"; "Test" |]))
+
+[<Fact>]
+let ``observation add requires description`` () =
+  let collection = InMemoryCollection.Create()
+  ignore (setupIncident collection)
+  let args = [| "add" |]
+  let result = handler observationCommands (collection.ToProvider()) args
+  assertError result
+
+[<Fact>]
+let ``observation add sets description`` () =
+  let start = DateTimeOffset.Now
+  let collection = InMemoryCollection.Create()
+  ignore (setupIncident collection)
+  let description = "Test observation"
+  let args = [| "add"; description |]
+  let result = handler observationCommands (collection.ToProvider()) args
+  assertSuccess result
+  let incident = expect (collection.Current())
+  let observation = List.find (fun e -> e.Type = EventType.Observation) incident.Events
+  Assert.Equal(description, observation.Description)
+
+[<Fact>]
+let ``observation add defaults time`` () =
+  let start = DateTimeOffset.Now
+  let collection = InMemoryCollection.Create()
+  ignore (setupIncident collection)
+  let args = [| "add"; "Observation" |]
+  let result = handler observationCommands (collection.ToProvider()) args
+  assertSuccess result
+  let incident = expect (collection.Current())
+  assertHasTime (fun e -> e.Type = EventType.Observation) start incident
+
+[<Fact>]
+let ``observation add sets specified time`` () =
+  let collection = InMemoryCollection.Create()
+  ignore (setupIncident collection)
+  let args = [| "add"; "Observation"; "2030-02-03T08:00" |]
+  let result = handler observationCommands (collection.ToProvider()) args
+  assertSuccess result
+  let incident = expect (collection.Current())
+  let observation = List.find (fun e -> e.Type = EventType.Observation) incident.Events
+  Assert.True(observation.Time.IsPrecise)
+  Assert.Equal(2030, observation.Time.Timestamp.Year)
+  Assert.Equal(2, observation.Time.Timestamp.Month)
+  Assert.Equal(3, observation.Time.Timestamp.Day)
