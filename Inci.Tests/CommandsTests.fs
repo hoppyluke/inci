@@ -39,191 +39,139 @@ type InMemoryCollection =
       static member Create() =
         { Selected = None; Incidents = Map.empty }
 
-let private assertError r =
-  match r with
-  | Success m -> Assert.Fail("Expected error result but got success: " + m)
-  | _ -> ()
-
-let private assertSuccess r =
-  match r with
-  | Error e -> Assert.Fail("Expected success result but got error: " + e)
-  | _ -> ()
-
-let private assertSuccessMessage messageAssertions r =
-  match r with
-  | Error e -> Assert.Fail("Expected success result but got error: " + e)
-  | Success m -> messageAssertions m
-
 let private expect value =
   match value with
   | Some x -> x
   | None -> failwith "Value expected"
 
 let private setupWithoutIncident () =
-  let start = DateTimeOffset.Now
-  let collection = InMemoryCollection.Create()
-  (start, collection.ToProvider())
+  InMemoryCollection.Create().ToProvider()
 
 let private setupWithIncident () =
-  let start = DateTimeOffset.Now
   let collection = InMemoryCollection.Create()
   declare "Test incident" (Events.nowish())
   |> collection.Put
   |> collection.Select
   |> ignore
-  (start, collection.ToProvider())
-
-let private assertOnCurrentIncident provider result (assertions: Incident -> unit) =
-  assertSuccess result
-  let incident = expect (provider.Current())
-  assertions incident
+  collection.ToProvider()
 
 [<Fact>]
 let ``declare errors with no args`` () =
-  let _, provider = setupWithoutIncident()
+  let provider = setupWithoutIncident()
   let result = declareCommand provider Array.empty
-  assertError result
+  CommandAssertion.isError result
 
 [<Fact>]
 let ``declare succeeds without time`` () =
-  let _, provider = setupWithoutIncident()
+  let provider = setupWithoutIncident()
   let result = declareCommand provider [| "test name" |]
-  assertOnCurrentIncident provider result (fun i -> Assert.Equal("test name", i.Name))
+  CommandAssertion.hasIncident provider
+  CommandAssertion.successMessage "test name" result
+  CommandAssertion.lastEventWasNowish provider
 
 [<Fact>]
 let ``declare errors with invalid time`` () =
-  let args = [| "test name"; "foo" |]
-  Assert.Throws<ValidationError>(fun () -> ignore(declareCommand (InMemoryCollection.Create().ToProvider()) args))
+  let provider = setupWithIncident()
+  CommandAssertion.failsValidation declareCommand [| "test name"; "foo" |] provider
 
 [<Fact>]
 let ``declare succeeds with valid time`` () =
-  let args = [| "test name"; "12:34" |]
-  let result = declareCommand (InMemoryCollection.Create().ToProvider()) args
-  assertSuccess result
+  let provider = setupWithoutIncident()
+  let result = declareCommand provider [| "test name"; "12:34" |]
+  CommandAssertion.isSuccess result
 
 [<Fact>]
 let ``declare sets current incident`` () =
-  let _, provider = setupWithoutIncident()
-  let result = declareCommand provider [| "test name" |]
-  assertOnCurrentIncident provider result ignore
+  let provider = setupWithoutIncident()
+  let _result = declareCommand provider [| "test name" |]
+  CommandAssertion.hasIncident provider
 
 [<Theory>]
 [<InlineData(true)>]
 [<InlineData(false)>]
 let ``which without incident respects error option`` (shouldFail : bool) =
-  let _, provider = setupWithoutIncident()
+  let provider = setupWithoutIncident()
   let result = whichCommand provider shouldFail
-  match result with
-  | Error e -> Assert.Equal("No current incident", e)
-               Assert.True(shouldFail, "Error result returned when success was expected")
-  | Success s -> Assert.Equal("No current incident", s)
-                 Assert.False(shouldFail, "Success result returned when failure was expected")
+  match shouldFail with
+  | true -> CommandAssertion.errorMessage "No current incident" result
+  | false -> CommandAssertion.successMessage "No current incident" result
 
 [<Fact>]
 let ``which returns current incident details`` () =
-  let _, provider = setupWithIncident()
+  let provider = setupWithIncident()
   let result = whichCommand provider true
-  assertSuccess result
+  CommandAssertion.isSuccess result
 
 [<Fact>]
 let ``resolve without incident raises error`` () =
-  let _, provider = setupWithoutIncident()
-  Assert.Throws<ValidationError>(fun () -> ignore(resolveCommand provider [| "12:34" |])) 
-
-let private isResolution e =
-  e.Type = EventType.Declaration && e.IsResolved
+  let provider = setupWithoutIncident()
+  CommandAssertion.failsValidation resolveCommand [| "12:34" |] provider 
 
 [<Fact>]
 let ``resolve succeeds with incident`` () =
-  let _, provider = setupWithIncident()
+  let provider = setupWithIncident()
   let result = resolveCommand provider [| |]
-  assertOnCurrentIncident provider result (fun i -> Assert.Contains(i.Events, isResolution))
-
-let private assertHasTime eventSelector startTime incident =
-  let foundEvent = List.find eventSelector incident.Events
-  Assert.False(foundEvent.Time.IsPrecise)
-  Assert.True(foundEvent.Time.Timestamp > startTime)
+  CommandAssertion.isSuccess result
 
 [<Fact>]
 let ``resolve defaults time`` () =
-  let start, provider = setupWithIncident()
-  let result = resolveCommand provider [| |]
-  assertOnCurrentIncident provider result (assertHasTime isResolution start)
+  let provider = setupWithIncident()
+  let _result = resolveCommand provider [| |]
+  CommandAssertion.lastEventWasNowish provider
 
 [<Fact>]
 let ``resolve sets time`` () =
-  let _, provider = setupWithIncident()
+  let provider = setupWithIncident()
   let result = resolveCommand provider [| "2030-02-03T08:00" |]
-  let assertions incident =
-    let resolution = List.find isResolution incident.Events
-    Assert.True(resolution.Time.IsPrecise)
-    Assert.Equal(2030, resolution.Time.Timestamp.Year)
-    Assert.Equal(2, resolution.Time.Timestamp.Month)
-    Assert.Equal(3, resolution.Time.Timestamp.Day)
-  assertOnCurrentIncident provider result assertions
+  CommandAssertion.successMessage "2030-02-03" result
 
 [<Fact>]
 let ``invalid observation command raises error`` () =
-  let _, provider = setupWithIncident()
-  Assert.Throws<ValidationError>(fun () -> ignore (handler observationCommands provider [| "foo" |]))
+  let provider = setupWithIncident()
+  CommandAssertion.failsValidation (handler observationCommands) [| "foo" |] provider
 
 [<Fact>]
 let ``observation add requires incident`` () =
-  let _, provider = setupWithoutIncident()
-  Assert.Throws<ValidationError>(fun () -> ignore (handler observationCommands provider [| "add"; "Test" |]))
+  let provider = setupWithoutIncident()
+  CommandAssertion.failsValidation (handler observationCommands) [| "add"; "Test" |] provider
 
 [<Fact>]
 let ``observation add requires description`` () =
-  let _, provider = setupWithIncident()
-  let args = [| "add" |]
-  let result = handler observationCommands provider args
-  assertError result
+  let provider = setupWithIncident()
+  let result = handler observationCommands provider [| "add" |]
+  CommandAssertion.isError result
 
 [<Fact>]
 let ``observation add sets description`` () =
-  let start, provider = setupWithIncident()
+  let provider = setupWithIncident()
   let description = "Test observation"
-  let args = [| "add"; description |]
-  let result = handler observationCommands provider args
-  let assertions incident =
-    let observation = List.find (fun e -> e.Type = EventType.Observation) incident.Events
-    Assert.Equal(description, observation.Description)
-  assertOnCurrentIncident provider result assertions
+  let result = handler observationCommands provider [| "add"; description |]
+  CommandAssertion.successMessage description result
 
 [<Fact>]
 let ``observation add defaults time`` () =
-  let start, provider = setupWithIncident()
-  let args = [| "add"; "Observation" |]
-  let result = handler observationCommands provider args
-  assertOnCurrentIncident provider result (assertHasTime (fun e -> e.Type = EventType.Observation) start)
+  let provider = setupWithIncident()
+  let _result = handler observationCommands provider [| "add"; "Observation" |]
+  CommandAssertion.lastEventWasNowish provider
 
 [<Fact>]
 let ``observation add sets specified time`` () =
-  let _, provider = setupWithIncident()
-  let args = [| "add"; "Observation"; "2030-02-03T08:00" |]
-  let result = handler observationCommands provider args
-  let assertions incident =
-    let observation = List.find (fun e -> e.Type = EventType.Observation) incident.Events
-    Assert.True(observation.Time.IsPrecise)
-    Assert.Equal(2030, observation.Time.Timestamp.Year)
-    Assert.Equal(2, observation.Time.Timestamp.Month)
-    Assert.Equal(3, observation.Time.Timestamp.Day)
-  assertOnCurrentIncident provider result assertions
+  let provider = setupWithIncident()
+  let result = handler observationCommands provider [| "add"; "Observation"; "2030-02-03T08:00" |]
+  CommandAssertion.successMessage "2030-02-03" result
 
 [<Fact>]
 let ``observation list requires incidnet`` () =
-  let _, provider = setupWithoutIncident()
-  Assert.Throws<ValidationError>(fun () -> ignore(handler observationCommands provider [| "list" |]))
+  let provider = setupWithoutIncident()
+  CommandAssertion.failsValidation (handler observationCommands) [| "list" |] provider
 
 [<Fact>]
 let ``observation list combines results`` () =
-  let _, provider = setupWithIncident()
+  let provider = setupWithIncident()
   observed (Events.now()) "First" (expect (provider.Current()))
   |> observed (Events.now()) "Second"
   |> provider.Put
   |> ignore
   let result = handler observationCommands provider [| "list" |]
-  let hasResults msg =
-    Assert.Contains("First", msg)
-    Assert.Contains("Second", msg)
-  assertSuccessMessage hasResults result
+  CommandAssertion.successMessage "First" result
+  CommandAssertion.successMessage "Second" result

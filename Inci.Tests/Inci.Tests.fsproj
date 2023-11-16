@@ -9,6 +9,7 @@
     <Compile Include="EventTimeTests.fs" />
     <Compile Include="EventsTests.fs" />
     <Compile Include="IncidentManagementTests.fs" />
+    <Compile Include="CommandAssertion.fs" />
     <Compile Include="CommandsTests.fs" />
     <Compile Include="ClientUtilsTests.fs" />
     <Compile Include="Program.fs" />
