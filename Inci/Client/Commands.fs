@@ -73,12 +73,22 @@ let private lastEvent incident =
 
 let private eventResult = lastEvent >> eventDetails >> Success
 
-let private listObservationsCommand provider (args : string[]) =
+let handler (group : CommandGroup) provider (args : string[]) =
+  let (name, commandMap) = group
+  if args.Length < 1 then raise (ValidationError($"usage: inci {name} <action> [args]"))
+  match Map.tryFind (canonicalise(args[0])) commandMap with
+  | Some cmd -> cmd provider args[1..]
+  | None -> raise (ValidationError($"unknown command: {name} {args[0]}"))
+
+let private listEvents eventType provider =
   ensureIncident provider
-  |> list Observation
+  |> list eventType
   |> List.map eventDetails
   |> String.concat System.Environment.NewLine
   |> Success
+
+let private listObservationsCommand provider (args : string[]) =
+  listEvents Observation provider
 
 let private observedCommand provider (args : string[]) =
   if args.Length < 1 then Error("usage: inci observation add <description> [time]")
@@ -93,9 +103,17 @@ let observationCommands = ("observation", Map [
   ("add", observedCommand)
 ])
 
-let handler (group : CommandGroup) provider (args : string[]) =
-  let (name, commandMap) = group
-  if args.Length < 1 then raise (ValidationError($"usage: inci {name} <action> [args]"))
-  match Map.tryFind (canonicalise(args[0])) commandMap with
-  | Some cmd -> cmd provider args[1..]
-  | None -> raise (ValidationError($"unknown command: {name} {args[0]}"))
+let private actedCommand provider (args : string[]) =
+  if args.Length < 1 then Error("usage: inci action add <description> [time]")
+  else
+    let time = ensureTime (argValue 1 args)
+    updateIncident provider (acted time args[0])
+    |> eventResult
+
+let private listActionsCommand provider (args : string[]) =
+  listEvents Action provider
+
+let actionCommands = ("action", Map [
+  ("add", actedCommand)
+  ("list", listActionsCommand)
+])

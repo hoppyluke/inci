@@ -175,3 +175,42 @@ let ``observation list combines results`` () =
   let result = handler observationCommands provider [| "list" |]
   CommandAssertion.successMessage "First" result
   CommandAssertion.successMessage "Second" result
+
+[<Fact>]
+let ``action add adds new action`` () =
+  let provider = setupWithIncident()
+  let result = handler actionCommands provider [| "add"; "Testing" |]
+  CommandAssertion.successMessage "Testing" result
+
+[<Fact>]
+let ``action add requires description`` () =
+  let provider = setupWithIncident()
+  let result = handler actionCommands provider [| "add" |]
+  CommandAssertion.errorMessage "usage" result
+
+[<Fact>]
+let ``action add defaults time`` () =
+  let provider = setupWithIncident()
+  let _result = handler actionCommands provider [| "add"; "Time testing" |]
+  CommandAssertion.lastEventWasNowish provider
+
+[<Fact>]
+let ``action add uses sets specified time`` () =
+  let provider = setupWithIncident()
+  let result = handler actionCommands provider [| "add"; "Time testing"; "2000-08-02" |]
+  CommandAssertion.successMessage "2000-08-02" result
+
+[<Fact>]
+let ``action list requires incident`` () =
+  let provider = setupWithoutIncident()
+  CommandAssertion.failsValidation (handler actionCommands) [| "list" |] provider
+
+[<Fact>]
+let ``action list action builds list`` () =
+  let provider = setupWithIncident()
+  handler actionCommands provider [| "add"; "First action" |] |> ignore
+  handler actionCommands provider [| "add"; "Second action" |] |> ignore
+  let result = handler actionCommands provider [| "list" |]
+  CommandAssertion.successMessage "First action" result
+  CommandAssertion.successMessage "Second action" result
+
