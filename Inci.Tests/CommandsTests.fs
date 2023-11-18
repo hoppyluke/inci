@@ -60,6 +60,7 @@ let private selectCommandGroup name =
   | "observation" -> observationCommands
   | "action" -> actionCommands
   | "alert" -> alertCommands
+  | "monitor" -> monitorCommands
   | _ -> failwith $"Invalid command group: {name}"
 
 [<Fact>]
@@ -136,6 +137,7 @@ let ``resolve sets time`` () =
 [<InlineData("observation")>]
 [<InlineData("action")>]
 [<InlineData("alert")>]
+[<InlineData("monitor")>]
 let ``invalid command raises error`` group =
   let provider = setupWithIncident()
   let commandGroup = selectCommandGroup group
@@ -145,6 +147,7 @@ let ``invalid command raises error`` group =
 [<InlineData("observation")>]
 [<InlineData("action")>]
 [<InlineData("alert")>]
+[<InlineData("monitor")>]
 let ``event list requires incident`` group =
   let commandGroup = selectCommandGroup group
   let provider = setupWithoutIncident()
@@ -154,6 +157,7 @@ let ``event list requires incident`` group =
 [<InlineData("observation", "add")>]
 [<InlineData("action", "add")>]
 [<InlineData("alert", "fired")>]
+[<InlineData("monitor", "down")>]
 let ``event list returns list`` group addVerb =
   let commandGroup = selectCommandGroup group
   let provider = setupWithIncident()
@@ -167,6 +171,7 @@ let ``event list returns list`` group addVerb =
 [<InlineData("observation", "add")>]
 [<InlineData("action", "add")>]
 [<InlineData("alert", "fired")>]
+[<InlineData("monitor", "down")>]
 let ``add event requires incident`` group verb =
   let commandGroup = selectCommandGroup group
   let provider = setupWithoutIncident()
@@ -176,6 +181,7 @@ let ``add event requires incident`` group verb =
 [<InlineData("observation", "add")>]
 [<InlineData("action", "add")>]
 [<InlineData("alert", "fired")>]
+[<InlineData("monitor", "down")>]
 let ``add event requires description`` group verb =
   let commandGroup = selectCommandGroup group
   let provider = setupWithIncident()
@@ -186,6 +192,7 @@ let ``add event requires description`` group verb =
 [<InlineData("observation", "add")>]
 [<InlineData("action", "add")>]
 [<InlineData("alert", "fired")>]
+[<InlineData("monitor", "down")>]
 let ``add event sets description`` group verb =
   let commandGroup = selectCommandGroup group
   let provider = setupWithIncident()
@@ -197,6 +204,7 @@ let ``add event sets description`` group verb =
 [<InlineData("observation", "add")>]
 [<InlineData("action", "add")>]
 [<InlineData("alert", "fired")>]
+[<InlineData("monitor", "down")>]
 let ``add event defaults time if missing`` group verb =
   let commandGroup = selectCommandGroup group
   let provider = setupWithIncident()
@@ -207,6 +215,7 @@ let ``add event defaults time if missing`` group verb =
 [<InlineData("observation", "add")>]
 [<InlineData("action", "add")>]
 [<InlineData("alert", "fired")>]
+[<InlineData("monitor", "down")>]
 let ``add event uses provided time`` group verb =
   let commandGroup = selectCommandGroup group
   let provider = setupWithIncident()

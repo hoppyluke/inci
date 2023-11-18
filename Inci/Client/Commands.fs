@@ -108,3 +108,8 @@ let alertCommands = ("alert", Map [
   ("fired", addEvent alertFired "alert" "fired")
   ("list", listEvents Alert)
 ])
+
+let monitorCommands = ("monitor", Map [
+  ("down", addEvent down "monitor" "down")
+  ("list", listEvents Monitor)
+])
