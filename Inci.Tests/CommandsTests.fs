@@ -55,6 +55,12 @@ let private setupWithIncident () =
   |> ignore
   collection.ToProvider()
 
+let private selectCommandGroup name =
+  match name with
+  | "observation" -> observationCommands
+  | "action" -> actionCommands
+  | _ -> failwith $"Invalid command group: {name}"
+
 [<Fact>]
 let ``declare errors with no args`` () =
   let provider = setupWithoutIncident()
@@ -125,92 +131,75 @@ let ``resolve sets time`` () =
   let result = resolveCommand provider [| "2030-02-03T08:00" |]
   CommandAssertion.successMessage "2030-02-03" result
 
-[<Fact>]
-let ``invalid observation command raises error`` () =
+[<Theory>]
+[<InlineData("observation")>]
+[<InlineData("action")>]
+let ``invalid command raises error`` group =
   let provider = setupWithIncident()
-  CommandAssertion.failsValidation (handler observationCommands) [| "foo" |] provider
+  let commandGroup = selectCommandGroup group
+  CommandAssertion.failsValidation (handler commandGroup) [| "foo" |] provider
 
-[<Fact>]
-let ``observation add requires incident`` () =
+[<Theory>]
+[<InlineData("observation")>]
+[<InlineData("action")>]
+let ``event list requires incident`` group =
+  let commandGroup = selectCommandGroup group
   let provider = setupWithoutIncident()
-  CommandAssertion.failsValidation (handler observationCommands) [| "add"; "Test" |] provider
+  CommandAssertion.failsValidation (handler commandGroup) [| "list" |] provider
 
-[<Fact>]
-let ``observation add requires description`` () =
+[<Theory>]
+[<InlineData("observation")>]
+[<InlineData("action")>]
+let ``event list returns list`` group =
+  let commandGroup = selectCommandGroup group
   let provider = setupWithIncident()
-  let result = handler observationCommands provider [| "add" |]
+  ignore (handler commandGroup provider [| "add"; "Event 1" |])
+  ignore (handler commandGroup provider [| "add"; "Event 2" |])
+  let result = handler commandGroup provider [| "list" |]
+  CommandAssertion.successMessage "Event 1" result
+  CommandAssertion.successMessage "Event 2" result
+
+[<Theory>]
+[<InlineData("observation")>]
+[<InlineData("action")>]
+let ``add event requires incident`` group =
+  let commandGroup = selectCommandGroup group
+  let provider = setupWithoutIncident()
+  CommandAssertion.failsValidation (handler commandGroup) [| "add"; "Test" |] provider
+
+[<Theory>]
+[<InlineData("observation")>]
+[<InlineData("action")>]
+let ``add event requires description`` group =
+  let commandGroup = selectCommandGroup group
+  let provider = setupWithIncident()
+  let result = handler commandGroup provider [| "add" |]
   CommandAssertion.isError result
 
-[<Fact>]
-let ``observation add sets description`` () =
+[<Theory>]
+[<InlineData("observation")>]
+[<InlineData("action")>]
+let ``add event sets description`` group =
+  let commandGroup = selectCommandGroup group
   let provider = setupWithIncident()
-  let description = "Test observation"
-  let result = handler observationCommands provider [| "add"; description |]
+  let description = "Test description"
+  let result = handler commandGroup provider [| "add"; description |]
   CommandAssertion.successMessage description result
 
-[<Fact>]
-let ``observation add defaults time`` () =
+[<Theory>]
+[<InlineData("observation")>]
+[<InlineData("action")>]
+let ``add event defaults time if missing`` group =
+  let commandGroup = selectCommandGroup group
   let provider = setupWithIncident()
-  let _result = handler observationCommands provider [| "add"; "Observation" |]
+  let _result = handler commandGroup provider [| "add"; "Something" |]
   CommandAssertion.lastEventWasNowish provider
 
-[<Fact>]
-let ``observation add sets specified time`` () =
+[<Theory>]
+[<InlineData("observation")>]
+[<InlineData("action")>]
+let ``add event uses provided time`` group =
+  let commandGroup = selectCommandGroup group
   let provider = setupWithIncident()
-  let result = handler observationCommands provider [| "add"; "Observation"; "2030-02-03T08:00" |]
+  let result = handler commandGroup provider [| "add"; "Something"; "2030-02-03T08:00" |]
   CommandAssertion.successMessage "2030-02-03" result
-
-[<Fact>]
-let ``observation list requires incidnet`` () =
-  let provider = setupWithoutIncident()
-  CommandAssertion.failsValidation (handler observationCommands) [| "list" |] provider
-
-[<Fact>]
-let ``observation list combines results`` () =
-  let provider = setupWithIncident()
-  observed (Events.now()) "First" (expect (provider.Current()))
-  |> observed (Events.now()) "Second"
-  |> provider.Put
-  |> ignore
-  let result = handler observationCommands provider [| "list" |]
-  CommandAssertion.successMessage "First" result
-  CommandAssertion.successMessage "Second" result
-
-[<Fact>]
-let ``action add adds new action`` () =
-  let provider = setupWithIncident()
-  let result = handler actionCommands provider [| "add"; "Testing" |]
-  CommandAssertion.successMessage "Testing" result
-
-[<Fact>]
-let ``action add requires description`` () =
-  let provider = setupWithIncident()
-  let result = handler actionCommands provider [| "add" |]
-  CommandAssertion.errorMessage "usage" result
-
-[<Fact>]
-let ``action add defaults time`` () =
-  let provider = setupWithIncident()
-  let _result = handler actionCommands provider [| "add"; "Time testing" |]
-  CommandAssertion.lastEventWasNowish provider
-
-[<Fact>]
-let ``action add uses sets specified time`` () =
-  let provider = setupWithIncident()
-  let result = handler actionCommands provider [| "add"; "Time testing"; "2000-08-02" |]
-  CommandAssertion.successMessage "2000-08-02" result
-
-[<Fact>]
-let ``action list requires incident`` () =
-  let provider = setupWithoutIncident()
-  CommandAssertion.failsValidation (handler actionCommands) [| "list" |] provider
-
-[<Fact>]
-let ``action list action builds list`` () =
-  let provider = setupWithIncident()
-  handler actionCommands provider [| "add"; "First action" |] |> ignore
-  handler actionCommands provider [| "add"; "Second action" |] |> ignore
-  let result = handler actionCommands provider [| "list" |]
-  CommandAssertion.successMessage "First action" result
-  CommandAssertion.successMessage "Second action" result
-
