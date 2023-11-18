@@ -80,40 +80,31 @@ let handler (group : CommandGroup) provider (args : string[]) =
   | Some cmd -> cmd provider args[1..]
   | None -> raise (ValidationError($"unknown command: {name} {args[0]}"))
 
-let private listEvents eventType provider =
+let private listEvents eventType provider (args : string[]) =
   ensureIncident provider
   |> list eventType
   |> List.map eventDetails
   |> String.concat System.Environment.NewLine
   |> Success
 
-let private listObservationsCommand provider (args : string[]) =
-  listEvents Observation provider
-
-let private observedCommand provider (args : string[]) =
-  if args.Length < 1 then Error("usage: inci observation add <description> [time]")
+let private addEvent operation noun verb provider (args : string[]) =
+  if args.Length < 1 then Error $"usage: inci {noun} {verb} <description> [time]"
   else
-    let description = args[0]
     let time = ensureTime (argValue 1 args)
-    updateIncident provider (observed time description)
+    updateIncident provider (operation time args[0])
     |> eventResult
 
 let observationCommands = ("observation", Map [
-  ("list", listObservationsCommand)
-  ("add", observedCommand)
+  ("list", listEvents Observation)
+  ("add", addEvent observed "observation" "add")
 ])
 
-let private actedCommand provider (args : string[]) =
-  if args.Length < 1 then Error("usage: inci action add <description> [time]")
-  else
-    let time = ensureTime (argValue 1 args)
-    updateIncident provider (acted time args[0])
-    |> eventResult
-
-let private listActionsCommand provider (args : string[]) =
-  listEvents Action provider
-
 let actionCommands = ("action", Map [
-  ("add", actedCommand)
-  ("list", listActionsCommand)
+  ("add", addEvent acted "action" "add")
+  ("list", listEvents Action)
+])
+
+let alertCommands = ("alert", Map [
+  ("fired", addEvent alertFired "alert" "fired")
+  ("list", listEvents Alert)
 ])

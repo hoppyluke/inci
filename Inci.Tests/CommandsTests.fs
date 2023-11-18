@@ -59,6 +59,7 @@ let private selectCommandGroup name =
   match name with
   | "observation" -> observationCommands
   | "action" -> actionCommands
+  | "alert" -> alertCommands
   | _ -> failwith $"Invalid command group: {name}"
 
 [<Fact>]
@@ -134,6 +135,7 @@ let ``resolve sets time`` () =
 [<Theory>]
 [<InlineData("observation")>]
 [<InlineData("action")>]
+[<InlineData("alert")>]
 let ``invalid command raises error`` group =
   let provider = setupWithIncident()
   let commandGroup = selectCommandGroup group
@@ -142,64 +144,71 @@ let ``invalid command raises error`` group =
 [<Theory>]
 [<InlineData("observation")>]
 [<InlineData("action")>]
+[<InlineData("alert")>]
 let ``event list requires incident`` group =
   let commandGroup = selectCommandGroup group
   let provider = setupWithoutIncident()
   CommandAssertion.failsValidation (handler commandGroup) [| "list" |] provider
 
 [<Theory>]
-[<InlineData("observation")>]
-[<InlineData("action")>]
-let ``event list returns list`` group =
+[<InlineData("observation", "add")>]
+[<InlineData("action", "add")>]
+[<InlineData("alert", "fired")>]
+let ``event list returns list`` group addVerb =
   let commandGroup = selectCommandGroup group
   let provider = setupWithIncident()
-  ignore (handler commandGroup provider [| "add"; "Event 1" |])
-  ignore (handler commandGroup provider [| "add"; "Event 2" |])
+  ignore (handler commandGroup provider [| addVerb; "Event 1" |])
+  ignore (handler commandGroup provider [| addVerb; "Event 2" |])
   let result = handler commandGroup provider [| "list" |]
   CommandAssertion.successMessage "Event 1" result
   CommandAssertion.successMessage "Event 2" result
 
 [<Theory>]
-[<InlineData("observation")>]
-[<InlineData("action")>]
-let ``add event requires incident`` group =
+[<InlineData("observation", "add")>]
+[<InlineData("action", "add")>]
+[<InlineData("alert", "fired")>]
+let ``add event requires incident`` group verb =
   let commandGroup = selectCommandGroup group
   let provider = setupWithoutIncident()
-  CommandAssertion.failsValidation (handler commandGroup) [| "add"; "Test" |] provider
+  CommandAssertion.failsValidation (handler commandGroup) [| verb; "Test" |] provider
 
 [<Theory>]
-[<InlineData("observation")>]
-[<InlineData("action")>]
-let ``add event requires description`` group =
+[<InlineData("observation", "add")>]
+[<InlineData("action", "add")>]
+[<InlineData("alert", "fired")>]
+let ``add event requires description`` group verb =
   let commandGroup = selectCommandGroup group
   let provider = setupWithIncident()
-  let result = handler commandGroup provider [| "add" |]
+  let result = handler commandGroup provider [| verb |]
   CommandAssertion.isError result
 
 [<Theory>]
-[<InlineData("observation")>]
-[<InlineData("action")>]
-let ``add event sets description`` group =
+[<InlineData("observation", "add")>]
+[<InlineData("action", "add")>]
+[<InlineData("alert", "fired")>]
+let ``add event sets description`` group verb =
   let commandGroup = selectCommandGroup group
   let provider = setupWithIncident()
   let description = "Test description"
-  let result = handler commandGroup provider [| "add"; description |]
+  let result = handler commandGroup provider [| verb; description |]
   CommandAssertion.successMessage description result
 
 [<Theory>]
-[<InlineData("observation")>]
-[<InlineData("action")>]
-let ``add event defaults time if missing`` group =
+[<InlineData("observation", "add")>]
+[<InlineData("action", "add")>]
+[<InlineData("alert", "fired")>]
+let ``add event defaults time if missing`` group verb =
   let commandGroup = selectCommandGroup group
   let provider = setupWithIncident()
-  let _result = handler commandGroup provider [| "add"; "Something" |]
+  let _result = handler commandGroup provider [| verb; "Something" |]
   CommandAssertion.lastEventWasNowish provider
 
 [<Theory>]
-[<InlineData("observation")>]
-[<InlineData("action")>]
-let ``add event uses provided time`` group =
+[<InlineData("observation", "add")>]
+[<InlineData("action", "add")>]
+[<InlineData("alert", "fired")>]
+let ``add event uses provided time`` group verb =
   let commandGroup = selectCommandGroup group
   let provider = setupWithIncident()
-  let result = handler commandGroup provider [| "add"; "Something"; "2030-02-03T08:00" |]
+  let result = handler commandGroup provider [| verb; "Something"; "2030-02-03T08:00" |]
   CommandAssertion.successMessage "2030-02-03" result
