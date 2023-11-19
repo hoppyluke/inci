@@ -279,3 +279,25 @@ let ``resolve event uses provided time`` group downVerb upVerb =
            | _ -> failwith "Adding down event failed"
   let upResult = handler commandGroup provider [| upVerb; id; "2001-01-01" |]
   CommandAssertion.successMessage "2001-01-01" upResult
+
+[<Theory>]
+[<InlineData("alert", "fired")>]
+[<InlineData("monitor", "down")>]
+let ``resolvable events include verb when firing`` group verb =
+  let commandGroup = selectCommandGroup group
+  let provider = setupWithIncident()
+  let result = handler commandGroup provider [| verb; "Something" |]
+  CommandAssertion.successMessage $"Something {verb}" result
+
+[<Theory>]
+[<InlineData("alert", "fired", "resolved")>]
+[<InlineData("monitor", "down", "up")>]
+let ``resolvable events include verb when resolving`` group downVerb upVerb =
+  let commandGroup = selectCommandGroup group
+  let provider = setupWithIncident()
+  let downResult = handler commandGroup provider [| downVerb; "Something" |]
+  let id = match downResult with
+           | Success msg -> msg.Split(":")[0]
+           | _ -> failwith "Adding down event failed"
+  let upResult = handler commandGroup provider [| upVerb; id |]
+  CommandAssertion.successMessage $"Something {upVerb}" upResult

@@ -65,8 +65,19 @@ let resolveCommand provider (args : string[]) =
   updateIncident provider (resolve time)
   |> fun i -> Success (sprintf "%s resolved at %s" i.Name (formatTime time))
 
+let private eventVerb (event : Inci.Core.Event) =
+  match (event.Type, event.IsResolved) with
+  | Monitor, false -> "down"
+  | Monitor, true -> "up"
+  | Alert, false -> "fired"
+  | Alert, true -> "resolved"
+  | _, _ -> ""
+
 let private eventDetails (event : Inci.Core.Event) =
-  sprintf "%s: %s at %s" event.Id event.Description (formatTime event.Time)
+  match event.Type with
+  | Monitor -> $"{event.Id}: {event.Description} {eventVerb event} @ {(formatTime event.Time)}"
+  | Alert -> $"{event.Id}: {event.Description} {eventVerb event} @ {(formatTime event.Time)}" 
+  | _ -> $"{event.Id}: {event.Description} @ {(formatTime event.Time)}"
 
 let private lastEvent incident =
   incident.Events.Head
