@@ -39,7 +39,7 @@ let private assertOnCurrent assertion provider =
 let lastEventWasNowish provider =
     let assertion incident =
         match incident.Events with
-        | head :: _ -> Assert.False(head.Time.IsPrecise, "Expected imprecise time")
+        | head :: _ -> Assert.False(head.Time.IsPrecise, $"Expected imprecise time: {head.Id} @ {head.Time.Timestamp}")
                        let b = DateTimeOffset.UtcNow.AddMinutes(-1)
                        let e = DateTimeOffset.UtcNow.AddMinutes(1)
                        Assert.True(head.Time.Timestamp >= b && head.Time.Timestamp <= e , $"Expected recent time: {head.Time.Timestamp}")

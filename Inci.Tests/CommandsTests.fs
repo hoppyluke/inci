@@ -221,3 +221,61 @@ let ``add event uses provided time`` group verb =
   let provider = setupWithIncident()
   let result = handler commandGroup provider [| verb; "Something"; "2030-02-03T08:00" |]
   CommandAssertion.successMessage "2030-02-03" result
+
+[<Theory>]
+[<InlineData("alert", "resolved")>]
+[<InlineData("monitor", "up")>]
+let ``resolve event requires event ID`` group verb =
+  let commandGroup = selectCommandGroup group
+  let provider = setupWithIncident()
+  let result = handler commandGroup provider [| verb |]
+  CommandAssertion.isError result
+
+[<Theory>]
+[<InlineData("alert", "resolved")>]
+[<InlineData("monitor", "up")>]
+let ``resolve event returns error if no matching event`` group verb =
+  let commandGroup = selectCommandGroup group
+  let provider = setupWithIncident()
+  let result = handler commandGroup provider [| verb; "foo" |]
+  CommandAssertion.errorMessage "foo"
+
+[<Theory>]
+[<InlineData("alert", "fired", "resolved")>]
+[<InlineData("monitor", "down", "up")>]
+let ``resolve event succeeds if ID is found`` group downVerb upVerb =
+  let commandGroup = selectCommandGroup group
+  let provider = setupWithIncident()
+  let downResult = handler commandGroup provider [| downVerb; "Something" |]
+  let id = match downResult with
+           | Success msg -> msg.Split(":")[0]
+           | _ -> failwith "Adding down event failed"
+  let upResult = handler commandGroup provider [| upVerb; id |]
+  CommandAssertion.isSuccess upResult
+
+[<Theory>]
+[<InlineData("alert", "fired", "resolved")>]
+[<InlineData("monitor", "down", "up")>]
+let ``resolve event defaults time if missing`` group downVerb upVerb =
+  let commandGroup = selectCommandGroup group
+  let provider = setupWithIncident()
+  let downResult = handler commandGroup provider [| downVerb; "Something"; "1999-12-31" |]
+  let id = match downResult with
+           | Success msg -> msg.Split(":")[0]
+           | _ -> failwith "Adding down event failed"
+  let upResult = handler commandGroup provider [| upVerb; id |]
+  CommandAssertion.isSuccess upResult
+  CommandAssertion.lastEventWasNowish provider
+
+[<Theory>]
+[<InlineData("alert", "fired", "resolved")>]
+[<InlineData("monitor", "down", "up")>]
+let ``resolve event uses provided time`` group downVerb upVerb =
+  let commandGroup = selectCommandGroup group
+  let provider = setupWithIncident()
+  let downResult = handler commandGroup provider [| downVerb; "Something"; "1999-12-31" |]
+  let id = match downResult with
+           | Success msg -> msg.Split(":")[0]
+           | _ -> failwith "Adding down event failed"
+  let upResult = handler commandGroup provider [| upVerb; id; "2001-01-01" |]
+  CommandAssertion.successMessage "2001-01-01" upResult

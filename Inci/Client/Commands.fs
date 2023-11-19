@@ -94,6 +94,16 @@ let private addEvent operation noun verb provider (args : string[]) =
     updateIncident provider (operation time args[0])
     |> eventResult
 
+let private addResolution operation noun verb provider (args : string[]) =
+  if args.Length < 1 then Error $"usage: inci {noun} {verb} <id> [time]"
+  else
+    let time = ensureTime (argValue 1 args)
+    let incident = ensureIncident provider
+                   |> operation time args[0]
+    match incident with
+    | Some i -> provider.Put i |> eventResult
+    | None -> Error $"invalid {noun} ID: {args[0]}"
+
 let observationCommands = ("observation", Map [
   ("list", listEvents Observation)
   ("add", addEvent observed "observation" "add")
@@ -106,10 +116,12 @@ let actionCommands = ("action", Map [
 
 let alertCommands = ("alert", Map [
   ("fired", addEvent alertFired "alert" "fired")
+  ("resolved", addResolution alertResolved "alert" "fired")
   ("list", listEvents Alert)
 ])
 
 let monitorCommands = ("monitor", Map [
   ("down", addEvent down "monitor" "down")
+  ("up", addResolution up "monitor" "up")
   ("list", listEvents Monitor)
 ])
