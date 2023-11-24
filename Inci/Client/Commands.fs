@@ -150,8 +150,8 @@ let private emoji event =
   | Action, _ -> "🔧"
   | Monitor, false -> "🔴"
   | Monitor, true -> "🟢"
-  | Alert, false -> "🔶"
-  | Alert, true -> "🔷"
+  | Alert, false -> "🟨"
+  | Alert, true -> "✅"
   | Declaration, false -> "🔥"
   | Declaration, true -> "🏁"
 
@@ -164,6 +164,7 @@ let timelineCommand provider (args : string[]) =
   let incident = ensureIncident provider
   let events = List.sort incident.Events
   let idSize = maxLength (fun (e : Event) -> e.Id) events
+  // TODO format time based on range of timestamps (i.e. same day = no date)
   let timeSize = maxLength (fun e -> formatTime e.Time) events
   List.map (prettyPrint idSize timeSize) events
   |> String.concat System.Environment.NewLine
