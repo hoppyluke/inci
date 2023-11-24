@@ -16,12 +16,14 @@ let private dispatch (args : string[]) =
     | "action" -> handler actionCommands fileProvider args[1..]
     | "alert" -> handler alertCommands fileProvider args[1..]
     | "monitor" -> handler monitorCommands fileProvider args[1..]
+    | "timeline" -> timelineCommand fileProvider args[1..]
     | _ -> Error($"{command} is not an inci command")
 
 let private lf = Environment.NewLine
 
 [<EntryPoint>]
 let main args =
+    Console.OutputEncoding <- System.Text.Encoding.UTF8
     if args.Length = 0 then
         printfn "usage: inci <command> [args]"
         let whichResult = whichCommand fileProvider true

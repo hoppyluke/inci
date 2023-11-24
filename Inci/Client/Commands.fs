@@ -73,11 +73,13 @@ let private eventVerb (event : Inci.Core.Event) =
   | Alert, true -> "resolved"
   | _, _ -> ""
 
-let private eventDetails (event : Inci.Core.Event) =
+let private formatDescription event =
   match event.Type with
-  | Monitor -> $"{event.Id}: {event.Description} {eventVerb event} @ {(formatTime event.Time)}"
-  | Alert -> $"{event.Id}: {event.Description} {eventVerb event} @ {(formatTime event.Time)}" 
-  | _ -> $"{event.Id}: {event.Description} @ {(formatTime event.Time)}"
+  | Monitor | Alert -> event.Description + " " + eventVerb event
+  | _ -> event.Description
+
+let private eventDetails (event : Inci.Core.Event) =
+  $"{event.Id}: {formatDescription event} @ {(formatTime event.Time)}"
 
 let private lastEvent incident =
   incident.Events.Head
@@ -136,3 +138,33 @@ let monitorCommands = ("monitor", Map [
   ("up", addResolution up "monitor" "up")
   ("list", listEvents Monitor)
 ])
+
+let private maxLength (projection: 'T -> string) list =
+  List.map projection list
+  |> List.map (fun s -> s.Length)
+  |> List.max
+
+let private emoji event =
+  match (event.Type, event.IsResolved) with
+  | Observation, _ -> "🔍"
+  | Action, _ -> "🔧"
+  | Monitor, false -> "🔴"
+  | Monitor, true -> "🟢"
+  | Alert, false -> "🔶"
+  | Alert, true -> "🔷"
+  | Declaration, false -> "🔥"
+  | Declaration, true -> "🏁"
+
+let private prettyPrint idSize timeSize (event : Event) =
+  let id = event.Id.PadLeft(idSize)
+  let t = (formatTime event.Time).PadRight(timeSize)
+  $"{t} {emoji event} {id} {formatDescription event}"
+
+let timelineCommand provider (args : string[]) =
+  let incident = ensureIncident provider
+  let events = List.sort incident.Events
+  let idSize = maxLength (fun (e : Event) -> e.Id) events
+  let timeSize = maxLength (fun e -> formatTime e.Time) events
+  List.map (prettyPrint idSize timeSize) events
+  |> String.concat System.Environment.NewLine
+  |> Success
